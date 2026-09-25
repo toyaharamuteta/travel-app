@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp, Users, Receipt, RefreshCw, Calculator, Sparkles, Check, ArrowRight, AlertTriangle, X } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Users, Receipt, RefreshCw, Calculator, Sparkles, Check, ArrowRight, AlertTriangle } from 'lucide-react';
 
 export default function App() {
   // --- 状態管理 (localStorageから初期化) ---
@@ -165,11 +165,9 @@ export default function App() {
     members.forEach(m => balances[m] = 0);
 
     expenses.forEach(exp => {
-      // 立て替えた人はプラス
       if (balances[exp.payer] !== undefined) {
         balances[exp.payer] += exp.totalAmount;
       }
-      // 払うべき人はマイナス
       Object.entries(exp.shares).forEach(([member, amount]) => {
         if (balances[member] !== undefined) {
           balances[member] -= amount;
@@ -177,8 +175,8 @@ export default function App() {
       });
     });
 
-    let debtors = []; // 払う人（マイナス）
-    let creditors = []; // もらう人（プラス）
+    let debtors = [];
+    let creditors = [];
 
     Object.entries(balances).forEach(([member, amount]) => {
       if (amount < -1) debtors.push({ member, amount: -amount });
@@ -620,9 +618,9 @@ export default function App() {
         </main>
       </div>
 
-      {/* フッター領域：画面下部にリセットボタンをひっそり配置 */}
+      {/* フッター領域：上に大きめのマージン（隙間）を設定 */}
       {step !== 'opening' && (
-        <footer className="text-center pt-8 pb-4">
+        <footer className="text-center pt-12 pb-6 mt-16" style={{ marginTop: '60px' }}>
           <button
             onClick={() => setShowResetModal(true)}
             className="text-xs text-slate-500 hover:text-rose-400 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-slate-800"
