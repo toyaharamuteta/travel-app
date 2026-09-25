@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp, Users, Receipt, RefreshCw, Calculator, Sparkles, Check, ArrowRight, AlertTriangle, Edit3, X } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Users, Receipt, RefreshCw, Calculator, Sparkles, Check, ArrowRight, AlertTriangle, Edit3, X, UserPlus, UserCheck } from 'lucide-react';
 
-// Tailwind CSSに依存せず100%完璧にスタイリングを当てる完全埋め込みCSS
+// 完全独立型埋め込みCSS
 const embeddedStyles = `
   * {
     box-sizing: border-box;
@@ -77,6 +77,7 @@ const embeddedStyles = `
     cursor: pointer;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
   }
   .btn-secondary:hover {
@@ -141,7 +142,6 @@ const embeddedStyles = `
     max-height: 85vh;
     overflow-y: auto;
   }
-  /* ここで明確に80pxの大きな余白（隙間）を設定 */
   .reset-footer {
     margin-top: 80px;
     margin-bottom: 40px;
@@ -181,9 +181,14 @@ export default function App() {
 
   // モーダル・編集状態
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showMemberModal, setShowMemberModal] = useState(false); // メンバー管理モーダル
   const [showResetModal, setShowResetModal] = useState(false);
   const [expandedExpenseId, setExpandedExpenseId] = useState(null);
-  const [editingExpenseId, setEditingExpenseId] = useState(null); // 編集対象ID
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+
+  // メンバー編集用の状態
+  const [editingMemberIndex, setEditingMemberIndex] = useState(null);
+  const [editingMemberName, setEditingMemberName] = useState('');
 
   // ローカルストレージ自動保存
   useEffect(() => { localStorage.setItem('travel_step', step); }, [step]);
@@ -204,6 +209,7 @@ export default function App() {
     setStep('members');
   };
 
+  // メンバー追加
   const addMember = () => {
     if (memberInput.trim() && !members.includes(memberInput.trim())) {
       setMembers([...members, memberInput.trim()]);
@@ -211,12 +217,73 @@ export default function App() {
     }
   };
 
-  const removeMember = (index) => {
-    setMembers(members.filter((_, i) => i !== index));
+  // メンバー削除（安全策付き）
+  const removeMember = (targetName) => {
+    const isUsed = expenses.some(exp => exp.payer === targetName || (exp.shares && exp.shares[targetName] > 0));
+    if (isUsed) {
+      if (!confirm(`${targetName}さんは過去の支出に含まれています。削除しますか？`)) {
+        return;
+      }
+    }
+    setMembers(members.filter(m => m !== targetName));
+  };
+
+  // メンバー名前変更（過去データも連動更新）
+  const startRenameMember = (index) => {
+    setEditingMemberIndex(index);
+    setEditingMemberName(members[index]);
+  };
+
+  const saveRenameMember = (index) => {
+    const oldName = members[index];
+    const newName = editingMemberName.trim();
+
+    if (!newName || newName === oldName) {
+      setEditingMemberIndex(null);
+      return;
+    }
+
+    if (members.includes(newName)) {
+      alert('その名前は既に存在します');
+      return;
+    }
+
+    // メンバーリスト更新
+    const updatedMembers = [...members];
+    updatedMembers[index] = newName;
+    setMembers(updatedMembers);
+
+    // 過去の支出データ（立替者・負担額キー等）を新名前に一括変換
+    const updatedExpenses = expenses.map(exp => {
+      const newPayer = exp.payer === oldName ? newName : exp.payer;
+      const newShares = {};
+      const newMenus = {};
+
+      Object.entries(exp.shares || {}).forEach(([m, amt]) => {
+        const key = m === oldName ? newName : m;
+        newShares[key] = amt;
+      });
+
+      Object.entries(exp.menus || {}).forEach(([m, menu]) => {
+        const key = m === oldName ? newName : m;
+        newMenus[key] = menu;
+      });
+
+      return {
+        ...exp,
+        payer: newPayer,
+        shares: newShares,
+        menus: newMenus
+      };
+    });
+
+    setExpenses(updatedExpenses);
+    setEditingMemberIndex(null);
   };
 
   // 新規記録モーダルを開く
   const openAddModal = () => {
+    if (members.length === 0) return alert('メンバーを1人以上登録してください');
     setEditingExpenseId(null);
     setTitle('');
     setPayer(members[0] || '');
@@ -231,7 +298,7 @@ export default function App() {
     setShowAddModal(true);
   };
 
-  // 編集モーダルを開く（内訳から呼び出し）
+  // 編集モーダルを開く
   const openEditModal = (exp) => {
     setEditingExpenseId(exp.id);
     setTitle(exp.title);
@@ -239,11 +306,9 @@ export default function App() {
     setSplitType(exp.splitType);
     setTotalAmount(exp.totalAmount ? String(exp.totalAmount) : '');
     
-    // 参加者の復元
     const activeParticipants = Object.keys(exp.shares).filter(m => exp.shares[m] > 0);
     setParticipants(activeParticipants.length > 0 ? activeParticipants : [...members]);
 
-    // 個別詳細の復元
     const details = {};
     members.forEach(m => {
       details[m] = {
@@ -256,7 +321,7 @@ export default function App() {
     setShowAddModal(true);
   };
 
-  // 保存処理（新規追加 または 既存更新）
+  // 保存処理
   const handleSaveExpense = (e) => {
     e.preventDefault();
     if (!title) return alert('支出の内容を入力してください');
@@ -285,7 +350,6 @@ export default function App() {
     }
 
     if (editingExpenseId) {
-      // 更新処理
       setExpenses(expenses.map(exp => {
         if (exp.id === editingExpenseId) {
           return {
@@ -301,7 +365,6 @@ export default function App() {
         return exp;
       }));
     } else {
-      // 新規作成処理
       const newExpense = {
         id: Date.now(),
         title,
@@ -339,7 +402,7 @@ export default function App() {
 
     expenses.forEach(exp => {
       if (balances[exp.payer] !== undefined) balances[exp.payer] += exp.totalAmount;
-      Object.entries(exp.shares).forEach(([member, amount]) => {
+      Object.entries(exp.shares || {}).forEach(([member, amount]) => {
         if (balances[member] !== undefined) balances[member] -= amount;
       });
     });
@@ -396,7 +459,7 @@ export default function App() {
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>旅行・ご飯の割り勘を<br /><span style={{ color: '#a5b4fc' }}>スマートに精算</span></h2>
             <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: '1.6', marginBottom: '24px' }}>
-              誰がいくら払ったか記録するだけ！<br />個別のメニュー指定や修正・編集もラクラク。
+              誰がいくら払ったか記録するだけ！<br />途中からのメンバー追加・修正もバッチリ対応。
             </p>
             <button onClick={handleStartMembers} className="btn-gradient">
               スタートする
@@ -404,7 +467,7 @@ export default function App() {
           </div>
         )}
 
-        {/* STEP 2: メンバー設定 */}
+        {/* STEP 2: 初期メンバー設定 */}
         {step === 'members' && (
           <div>
             <div className="glass-card">
@@ -413,7 +476,6 @@ export default function App() {
               </h2>
               
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                {/* プレースホルダーを「例: 田中」に変更 */}
                 <input
                   type="text"
                   placeholder="例: 田中"
@@ -430,7 +492,7 @@ export default function App() {
                 {members.map((name, index) => (
                   <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(17, 24, 39, 0.6)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <span style={{ fontSize: '14px', fontWeight: '600' }}>{name}</span>
-                    <button onClick={() => removeMember(index)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}>
+                    <button onClick={() => removeMember(name)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}>
                       <Trash2 style={{ width: '16px', height: '16px' }} />
                     </button>
                   </div>
@@ -453,10 +515,15 @@ export default function App() {
         {/* STEP 3: メイン画面 */}
         {step === 'main' && (
           <div>
-            {/* 支出追加ボタン */}
-            <button onClick={openAddModal} className="btn-gradient" style={{ marginBottom: '20px' }}>
-              <Plus style={{ width: '20px', height: '20px' }} /> 支出を記録する
-            </button>
+            {/* 上部アクションボタン（支出追加 ＆ メンバー管理） */}
+            <div className="grid-2" style={{ marginBottom: '20px' }}>
+              <button onClick={openAddModal} className="btn-gradient">
+                <Plus style={{ width: '18px', height: '18px' }} /> 支出を記録
+              </button>
+              <button onClick={() => setShowMemberModal(true)} className="btn-secondary" style={{ padding: '14px', justifyContent: 'center', background: 'rgba(31, 41, 55, 0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <Users style={{ width: '18px', height: '18px', color: '#a5b4fc' }} /> メンバー追加・変更
+              </button>
+            </div>
 
             {/* 精算結果カード */}
             <div className="glass-card">
@@ -465,7 +532,7 @@ export default function App() {
               </h2>
 
               {transactions.length === 0 ? (
-                <p style={{ textAlignment: 'center', color: '#9ca3af', fontSize: '12px', padding: '12px 0' }}>貸し借りはまだありません</p>
+                <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: '12px', padding: '12px 0' }}>貸し借りはまだありません</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {transactions.map((t, idx) => (
@@ -514,16 +581,14 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* 内訳表示トグル */}
                     <button
                       onClick={() => setExpandedExpenseId(expandedExpenseId === exp.id ? null : exp.id)}
-                      style={{ width: '100%', padding: '8px', background: 'rgba(15, 23, 42, 0.5)', border: 'none', borderTop: '1px solid rgba(255,255,255,0.05)', color: '#9ca3af', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                      style={{ width: '100%', padding: '8px', background: 'rgba(15, 23, 42, 0.5)', border: 'none', borderTop: '1px solid rgba(255,255,255,0.05)', color: '#9ca3af', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyCenter: 'center', gap: '4px' }}
                     >
                       <span>詳細を見る（内訳・編集）</span>
                       {expandedExpenseId === exp.id ? <ChevronUp style={{ width: '14px', height: '14px' }} /> : <ChevronDown style={{ width: '14px', height: '14px' }} />}
                     </button>
 
-                    {/* 内訳詳細＆編集ボタン領域 */}
                     {expandedExpenseId === exp.id && (
                       <div style={{ padding: '16px', background: 'rgba(3, 7, 18, 0.6)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                         <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', marginBottom: '12px' }}>
@@ -535,7 +600,7 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody>
-                            {Object.entries(exp.shares).map(([memberName, amt]) => (
+                            {Object.entries(exp.shares || {}).map(([memberName, amt]) => (
                               <tr key={memberName} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                 <td style={{ padding: '8px 0', color: '#e5e7eb' }}>{memberName}</td>
                                 {exp.splitType === 'individual' && (
@@ -549,7 +614,6 @@ export default function App() {
                           </tbody>
                         </table>
 
-                        {/* 内訳内の編集ボタン */}
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                           <button
                             onClick={() => openEditModal(exp)}
@@ -564,6 +628,74 @@ export default function App() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        )}
+
+        {/* --- モーダル: 途中メンバー管理（追加・編集・削除） --- */}
+        {showMemberModal && (
+          <div className="modal-overlay">
+            <div className="glass-card modal-content" style={{ marginBottom: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users style={{ width: '18px', height: '18px', color: '#a5b4fc' }} /> メンバーの管理
+                </h3>
+                <button onClick={() => setShowMemberModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>
+                  <X style={{ width: '20px', height: '20px' }} />
+                </button>
+              </div>
+
+              {/* 新規メンバー追加フォーム */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                <input
+                  type="text"
+                  placeholder="追加する名前を入力"
+                  value={memberInput}
+                  onChange={(e) => setMemberInput(e.target.value)}
+                  className="input-field"
+                />
+                <button onClick={addMember} className="btn-secondary" style={{ whiteSpace: 'nowrap', background: '#6366f1' }}>
+                  <UserPlus style={{ width: '16px', height: '16px' }} /> 追加
+                </button>
+              </div>
+
+              {/* メンバー一覧 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto', marginBottom: '20px' }}>
+                {members.map((name, index) => (
+                  <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(17, 24, 39, 0.8)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    {editingMemberIndex === index ? (
+                      <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                        <input
+                          type="text"
+                          value={editingMemberName}
+                          onChange={(e) => setEditingMemberName(e.target.value)}
+                          className="input-field"
+                          style={{ padding: '6px 10px', fontSize: '13px' }}
+                        />
+                        <button onClick={() => saveRenameMember(index)} className="btn-secondary" style={{ padding: '6px 10px', background: '#10b981' }}>
+                          <UserCheck style={{ width: '14px', height: '14px' }} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#e5e7eb' }}>{name}</span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => startRenameMember(index)} style={{ background: 'none', border: 'none', color: '#a5b4fc', cursor: 'pointer' }}>
+                            <Edit3 style={{ width: '15px', height: '15px' }} />
+                          </button>
+                          <button onClick={() => removeMember(name)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}>
+                            <Trash2 style={{ width: '15px', height: '15px' }} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => setShowMemberModal(false)} className="btn-gradient">
+                完了
+              </button>
             </div>
           </div>
         )}
@@ -786,7 +918,7 @@ export default function App() {
         )}
       </main>
 
-      {/* フッター（リセットボタン領域：上に80pxの余白を確実に確保） */}
+      {/* フッター */}
       {step !== 'opening' && (
         <footer className="reset-footer">
           <button
