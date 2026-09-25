@@ -181,7 +181,7 @@ export default function App() {
 
   // モーダル・編集状態
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showMemberModal, setShowMemberModal] = useState(false); // メンバー管理モーダル
+  const [showMemberModal, setShowMemberModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [expandedExpenseId, setExpandedExpenseId] = useState(null);
   const [editingExpenseId, setEditingExpenseId] = useState(null);
@@ -205,7 +205,6 @@ export default function App() {
   const [individualDetails, setIndividualDetails] = useState({});
 
   const handleStartMembers = () => {
-    if (members.length === 0) setMembers(['A君', 'B君', 'C君']);
     setStep('members');
   };
 
@@ -248,12 +247,10 @@ export default function App() {
       return;
     }
 
-    // メンバーリスト更新
     const updatedMembers = [...members];
     updatedMembers[index] = newName;
     setMembers(updatedMembers);
 
-    // 過去の支出データ（立替者・負担額キー等）を新名前に一括変換
     const updatedExpenses = expenses.map(exp => {
       const newPayer = exp.payer === oldName ? newName : exp.payer;
       const newShares = {};
@@ -447,7 +444,7 @@ export default function App() {
         <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #d946ef)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Sparkles style={{ width: '18px', height: '18px', color: '#fff' }} />
         </div>
-        <h1 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff' }}>勇人専用の計算サイト🐶</h1>
+        <h1 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff' }}>勇人専用の計算サイト</h1>
       </header>
 
       <main className="app-body">
@@ -462,7 +459,7 @@ export default function App() {
               誰がいくら払ったか記録するだけ！<br />途中からのメンバー追加・修正もバッチリ対応。
             </p>
             <button onClick={handleStartMembers} className="btn-gradient">
-              始める
+              スタート！
             </button>
           </div>
         )}
@@ -488,16 +485,22 @@ export default function App() {
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {members.map((name, index) => (
-                  <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(17, 24, 39, 0.6)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontSize: '14px', fontWeight: '600' }}>{name}</span>
-                    <button onClick={() => removeMember(name)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}>
-                      <Trash2 style={{ width: '16px', height: '16px' }} />
-                    </button>
-                  </div>
-                ))}
-              </div>
+              {members.length === 0 ? (
+                <p style={{ textCenter: 'center', color: '#6b7280', fontSize: '13px', padding: '16px 0', textAlign: 'center' }}>
+                  名前を入力して「追加」ボタンを押してください
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {members.map((name, index) => (
+                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(17, 24, 39, 0.6)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '600' }}>{name}</span>
+                      <button onClick={() => removeMember(name)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}>
+                        <Trash2 style={{ width: '16px', height: '16px' }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button
@@ -515,7 +518,6 @@ export default function App() {
         {/* STEP 3: メイン画面 */}
         {step === 'main' && (
           <div>
-            {/* 上部アクションボタン（支出追加 ＆ メンバー管理） */}
             <div className="grid-2" style={{ marginBottom: '20px' }}>
               <button onClick={openAddModal} className="btn-gradient">
                 <Plus style={{ width: '18px', height: '18px' }} /> 支出を記録
@@ -718,7 +720,7 @@ export default function App() {
                   <label style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>何にお金を使いましたか？</label>
                   <input
                     type="text"
-                    placeholder="例: 夕食代、ホテル代、スーパー銭湯"
+                    placeholder="例: 夕食代、ホテル代、タクシー"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     className="input-field"
