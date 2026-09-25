@@ -447,7 +447,7 @@ export default function App() {
         <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #d946ef)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Sparkles style={{ width: '18px', height: '18px', color: '#fff' }} />
         </div>
-        <h1 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff' }}>割り勘かんたん計算</h1>
+        <h1 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff' }}>勇人専用の計算サイト🐶</h1>
       </header>
 
       <main className="app-body">
@@ -457,12 +457,12 @@ export default function App() {
             <div style={{ width: '70px', height: '70px', borderRadius: '20px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Calculator style={{ width: '36px', height: '36px', color: '#fff' }} />
             </div>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>旅行・ご飯の割り勘を<br /><span style={{ color: '#a5b4fc' }}>スマートに精算</span></h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>旅行・ご飯の精算なら<br /><span style={{ color: '#a5b4fc' }}>俺に任せろ！！</span></h2>
             <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: '1.6', marginBottom: '24px' }}>
               誰がいくら払ったか記録するだけ！<br />途中からのメンバー追加・修正もバッチリ対応。
             </p>
             <button onClick={handleStartMembers} className="btn-gradient">
-              スタートする
+              始める
             </button>
           </div>
         )}
@@ -478,7 +478,7 @@ export default function App() {
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                 <input
                   type="text"
-                  placeholder="例: 田中"
+                  placeholder="例: 舘村勇人"
                   value={memberInput}
                   onChange={(e) => setMemberInput(e.target.value)}
                   className="input-field"
@@ -718,7 +718,7 @@ export default function App() {
                   <label style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>何にお金を使いましたか？</label>
                   <input
                     type="text"
-                    placeholder="例: 夕食代、ホテル代、タクシー"
+                    placeholder="例: 夕食代、ホテル代、スーパー銭湯"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     className="input-field"
